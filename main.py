@@ -1,57 +1,67 @@
 #!/usr/bin/env python3
-"""One funny single-line developer excuse for code breaking in production."""
+"""Emit one dry one-liner about a production outage, as required."""
 
 import os
 import sys
 
-_OPENING = "Production didn't break my code"
-_REST = "it finally read the TODO I left in there back in 2019."
-LINE = _OPENING + " — " + _REST
+
+def build_joke():
+    head = "Production didn't break my code"
+    tail = "it finally read the TODO I left in there back in 2019."
+    return head + " — " + tail
 
 
-def _fail(message):
-    print(f"error: {message}", file=sys.stderr)
-    raise SystemExit(1)
+def bail(reason):
+    sys.stderr.write("failure: " + reason + "\n")
+    sys.exit(1)
 
 
-def _check(line):
-    if not line.strip():
-        _fail("blank output")
-    if any(ch in line for ch in "\r\n"):
-        _fail("output must be a single line")
-    size = len(line)
-    if not 1 <= size <= 200:
-        _fail(f"output length {size} outside 1-200 gate")
+def insist_single_row(sentence):
+    if sentence == "":
+        bail("nothing to write")
+    if "\n" in sentence or "\r" in sentence:
+        bail("must be exactly one row")
+    if len(sentence) > 200:
+        bail("row too long for the gate")
+    if "TODO" not in sentence:
+        bail("TODO marker missing")
+    if sentence[-1] != ".":
+        bail("needs a closing full stop")
 
 
-def check_line(candidate):
-    if candidate.count("\n"):
-        _fail("must stay one line")
-    if "TODO" not in candidate or not candidate.endswith("."):
-        _fail("missing TODO marker or final stop")
-    if not 1 <= len(candidate) <= 200:
-        _fail("line length outside 1-200")
+def target_file():
+    folder = os.getenv("MAKEFUN_OUTPUT_DIR", "/output")
+    try:
+        os.makedirs(folder, exist_ok=True)
+    except OSError as problem:
+        bail("cannot prepare folder: " + str(problem))
+    return os.path.join(folder, "entry.txt")
 
 
-def _destination():
-    out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR") or "/output"
-    os.makedirs(out_dir, exist_ok=True)
-    return os.path.join(out_dir, "entry.txt")
-
-
-def run():
-    text = LINE
-    _check(text)
-    check_line(text)
-    path = _destination()
-    with open(path, "w", encoding="utf-8", newline="") as stream:
-        stream.write(text)
-    with open(path, "r", encoding="utf-8", newline="") as stream:
-        written = stream.read()
-    if written != text:
-        _fail("round-trip mismatch")
-    _check(written)
+def main():
+    sentence = build_joke()
+    insist_single_row(sentence)
+    where = target_file()
+    try:
+        handle = open(where, "w", encoding="utf-8", newline="")
+        try:
+            handle.write(sentence)
+        finally:
+            handle.close()
+    except OSError as problem:
+        bail("cannot write entry: " + str(problem))
+    try:
+        handle = open(where, "r", encoding="utf-8", newline="")
+        try:
+            back = handle.read()
+        finally:
+            handle.close()
+    except OSError as problem:
+        bail("cannot re-read entry: " + str(problem))
+    if back != sentence:
+        bail("what came back differs from what went in")
+    insist_single_row(back)
 
 
 if __name__ == "__main__":
-    run()
+    main()
