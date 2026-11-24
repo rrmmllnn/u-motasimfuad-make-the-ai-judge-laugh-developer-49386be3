@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Emit one dry one-liner about a production outage, as required."""
+"""Write one wry single-line quip about a production incident."""
 
 import os
 import sys
 
 
-def build_joke():
+def craft_punchline():
     head = "Production didn't break my code"
     tail = "it finally read the TODO I left in there back in 2019."
     return head + " — " + tail
@@ -17,10 +17,10 @@ def bail(reason):
 
 
 def insist_single_row(sentence):
-    if sentence == "":
-        bail("nothing to write")
-    if "\n" in sentence or "\r" in sentence:
-        bail("must be exactly one row")
+    if not sentence:
+        bail("empty sentence, nothing to emit")
+    if any(mark in sentence for mark in ("\n", "\r")):
+        bail("keep the sentence on a single row")
     if len(sentence) > 200:
         bail("row too long for the gate")
     if "TODO" not in sentence:
@@ -39,7 +39,7 @@ def target_file():
 
 
 def main():
-    sentence = build_joke()
+    sentence = craft_punchline()
     insist_single_row(sentence)
     where = target_file()
     try:
